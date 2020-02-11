@@ -8,6 +8,11 @@ class AiModels(Enum):
     HALF_UNET_3D_CLASSIFICATION_3_STREAMS = 6
     HALF_UNET_3D_CLASSIFICATION_SINGLE_STREAM = 7
 
+    UNET_2D_SINGLE = 20
+
+    ML_PERCEPTRON = 10
+
+
 
 class ModelParams(Enum):
     DROPOUT = 1  # If we should use Dropout on the NN
@@ -17,16 +22,19 @@ class ModelParams(Enum):
     START_NUM_FILTERS = 8  # How many filters are we using on the first layer and level
     NUMBER_LEVELS = 9  # Number of levels in the network (works for U-Net
     FILTER_SIZE = 10  # The size of the filters in each layer (currently is the same for each layer)
+    # ========= For Classification ===============
     NUMBER_DENSE_LAYERS = 11  # Used in 2D
     NUMBER_OF_OUTPUT_CLASSES = 12  # Used in 2D
+
+    # ========= For 1D Multilayer perceptron===============
+    HIDDEN_LAYERS = 13
+    CELLS_PER_HIDDEN_LAYER = 14
 
 
 class TrainingParams(Enum):
     # These are common training parameters
     input_folder = 1  # Where the images are stored
     output_folder = 2  # Where to store the segmented contours
-    output_imgs_folder = 3  # Where to store intermediate images
-    show_imgs = 4  # If we want to display the images while are being generated (for PyCharm)
     cases = 5  # A numpy array of the cases of interest or 'all'
     validation_percentage = 6
     test_percentage = 7
@@ -37,12 +45,20 @@ class TrainingParams(Enum):
     config_name = 14  # A name that allows you to identify the configuration of this training
     optimizer = 15
     data_augmentation = 16
-    # These parameters are for segmentation trainings
+
+    # ============ These parameters are for images (2D or 3D) ============
+    output_imgs_folder = 3  # Where to store intermediate images
+    show_imgs = 4  # If we want to display the images while are being generated (for PyCharm)
+
+    # ============ These parameters are for segmentation trainings ============
     image_file_names = 8
     ctr_file_names = 9
-    # These parameters are for classification
+
+    # ============ These parameters are for classification ============
     class_label_file_name = 20
 
+    # ============ These parameters are for 1D approximation ============
+    file_name = 30
 
 
 class ClassificationParams(Enum):
@@ -67,6 +83,11 @@ class ClassificationParams(Enum):
     save_imgs = 16  # Indicates if we want to save images from the segmented contours
     save_img_slices = 17  # IF we are saving the images, it indicates which slices to save
     save_img_planes = 18  # IF we are saving the images, it indicates which plane to save
+    split_file = 30  # This is the file that indicates how the split was made (training, validation, test)
+#     ================== For Time series =============
+    input_file = 19
+    training_data_file= 20 # Points to the file used for training
+    save_prediction = 21
 
 
 class SubstractionParams(Enum):
@@ -80,6 +101,8 @@ class SegmentationTypes(Enum):
     PROSTATE = 'Prostate'
     PZ = 'PZ'
 
+
 class ClassificationMetrics(Enum):
     DSC_3D = '3D_DSC'  # DSC in 3D
+    MSE = 'MSE'
 

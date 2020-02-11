@@ -1,5 +1,5 @@
-from keras.layers import *
-from keras.models import Model
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
 
 def single_conv_lay_3d(input, num_filters, filter_size, batch_norm=False, dropout=False):
     """ Adds a single convolutional layer with the specifiec parameters. It can add batch normalization and dropout

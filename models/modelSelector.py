@@ -1,7 +1,8 @@
 from constants.AI_params import *
-import AI.models.modelBuilder3D as model_builder_3d
-import AI.models.modelBuilder2D as model_builder_2d
-from keras.layers import Input
+import models.modelBuilder3D as model_builder_3d
+import models.modelBuilder2D as model_builder_2d
+import models.modelBuilder1D as model_builder_1d
+from tensorflow.keras.layers import Input
 
 def select_3d_model(model_params):
     model_type = model_params[ModelParams.MODEL]
@@ -64,7 +65,7 @@ def select_3d_model(model_params):
 def select_2d_model(model_params):
     model_type = model_params[ModelParams.MODEL]
     nn_input_size = model_params[ModelParams.INPUT_SIZE]
-    # Makes a 3D-Unet with three input streams
+    # Makes half of a 2D-Unet with three input streams
     if model_type == AiModels.HALF_UNET_2D_SINGLE_STREAM_CLASSIFICATION:
         # Reading configuration
         batch_normalization = model_params[ModelParams.BATCH_NORMALIZATION]
@@ -85,6 +86,56 @@ def select_2d_model(model_params):
             num_levels=number_levels,
             batch_norm=batch_normalization,
             dropout=dropout)
+        # Makes a 2D-Unet with a single input streams
+    elif model_type == AiModels.UNET_2D_SINGLE:
+        # Reading configuration
+        batch_normalization = model_params[ModelParams.BATCH_NORMALIZATION]
+        dropout = model_params[ModelParams.DROPOUT]
+        start_num_filters = model_params[ModelParams.START_NUM_FILTERS]
+        number_levels = model_params[ModelParams.NUMBER_LEVELS]
+        filter_size = model_params[ModelParams.FILTER_SIZE]
+        # Setting the proper inputs
+        if len(nn_input_size) == 2: # In this case we only have a 2D matrix so we need to add the addional dimension
+            inputs = [Input((nn_input_size[0], nn_input_size[1], 1))]
+        elif len(nn_input_size) == 3: # In this case we do have the 3 dimensions
+            inputs = [Input((nn_input_size[0], nn_input_size[1], nn_input_size[2]))]
+        # Building the model
+        model = model_builder_2d.make_multistream_2d_unet(
+            inputs,
+            num_filters=start_num_filters,
+            filter_size=filter_size,
+            num_levels=number_levels,
+            batch_norm_encoding=batch_normalization,
+            batch_norm_decoding=batch_normalization,
+            dropout_encoding=dropout,
+            dropout_decodign=dropout,
+            last_activation='relu')
+
+    else:
+        raise Exception(F"The specified model doesn't have a configuration: {model_type.value}")
+
+    return model
+
+
+def select_1d_model(model_params):
+    model_type = model_params[ModelParams.MODEL]
+    # Makes a 1D-Encoder
+    if model_type == AiModels.ML_PERCEPTRON:
+        # Reading configuration
+        batch_normalization = model_params[ModelParams.BATCH_NORMALIZATION]
+        dropout = model_params[ModelParams.DROPOUT]
+        input_size = model_params[ModelParams.INPUT_SIZE]
+        number_hidden_layers = model_params[ModelParams.HIDDEN_LAYERS]
+        cells_per_hidden_layer = model_params[ModelParams.CELLS_PER_HIDDEN_LAYER]
+        output_layer_size= model_params[ModelParams.NUMBER_OF_OUTPUT_CLASSES]
+        # Setting the proper inputs
+        inputs = Input(shape=(input_size,))
+        # Building the model
+        model = model_builder_1d.single_multlayer_perceptron( inputs, number_hidden_layers,
+                                                              cells_per_hidden_layer,
+                                                              output_layer_size,
+                                                              dropout=dropout,
+                                                              batch_norm=batch_normalization)
     else:
         raise Exception(F"The specified model doesn't have a configuration: {model_type.value}")
 

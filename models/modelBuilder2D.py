@@ -1,5 +1,5 @@
-from keras.layers import *
-from keras.models import Model
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
 
 def single_conv_lay_2d(input, num_filters, filter_size, batch_norm=False, dropout=False, activation='relu'):
     """ Adds a single convolutional layer with the specifiec parameters. It can add batch normalization and dropout
@@ -55,7 +55,7 @@ def make_multistream_2d_unet(inputs, num_filters=8, filter_size=3, num_levels=3,
                              batch_norm_encoding=False,
                              batch_norm_decoding=True,
                              dropout_encoding=False,
-                             dropout_decodign=True):
+                             dropout_decodign=True, activation='relu', last_activation='sigmoid'):
     """Makes a 3D-Unet with N number of inputs streams
     :param inputs: An array of tensorflow inputs for example inputs = [Input((10,10,10, 1)), Input((10,10,10,1)]
     :param num_filters: The number of filters to start with, it will double for every new level
@@ -90,30 +90,32 @@ def make_multistream_2d_unet(inputs, num_filters=8, filter_size=3, num_levels=3,
         streams.append({'convs':convs,'maxpools':maxpools})
 
     # First merging is special because it is after pooling
-    print(F"\n----------- MERGING AT THE BOTTOM  ----------- ")
-    print(F"Concatenating previous convs {streams[0]['maxpools'][-1].shape} (each)")
     merged_temp = []
     bottom_up_level = num_levels-1
     # Merging at the bottom
     if tot_streams > 1:
+        print(F"\n----------- MERGING AT THE BOTTOM  ----------- ")
+        print(F"Concatenating previous convs {streams[0]['maxpools'][-1].shape} (each)")
         for cur_stream in range(tot_streams):
             merged_temp.append(streams[cur_stream]['maxpools'][bottom_up_level])
         merged = concatenate(merged_temp)
-    else: # This is the single stream case (Default 3D UNet)
+        print(F'Merged size: {merged.shape}')
+    else: # This is the single stream case (Default 2D UNet)
         merged = streams[0]['maxpools'][bottom_up_level]
+        print(F'Size at the bottom: {merged.shape}')
 
-    print(F'Merged size: {merged.shape}')
 
     # Convoulutions at the bottom
     filters = num_filters * (2 ** (num_levels))
     [conv_p, dele] = multiple_conv_lay_2d(merged, filters, filter_size, make_pool=False, batch_norm=batch_norm_decoding,
                                           dropout=dropout_decodign)
+
+    print("\n ------------- DECODING PATH ----------------")
     print(F"Filters {filters} Conv (before deconv): {conv_p.shape}")
-    conv_t = Conv3DTranspose(filters, (2, 2, 2), strides=(2, 2, 2), activation='relu', padding='same')(conv_p)
+    conv_t = Conv2DTranspose(filters, (2, 2), strides=(2, 2), activation=activation, padding='same')(conv_p)
     print(F"Filters {filters} Conv (after deconv): {conv_t.shape}")
 
 
-    print("\n ------------- DECODING PATH ----------------")
     for level in range(1,num_levels+1):
         bottom_up_level = num_levels-level
 
@@ -130,10 +132,11 @@ def make_multistream_2d_unet(inputs, num_filters=8, filter_size=3, num_levels=3,
         print(F"Filters {filters} Conv (before deconv): {conv_p.shape}")
 
         if level != (num_levels):
-            conv_t = Conv3DTranspose(filters, (2, 2, 2), strides=(2, 2, 2), activation='relu', padding='same')(conv_p)
+            conv_t = Conv2DTranspose(filters, (2, 2), strides=(2, 2), activation=activation, padding='same')(conv_p)
             print(F"Filters {filters} Conv (after deconv): {conv_t.shape}")
 
-    last_conv = Conv3D(1, (1, 1, 1), activation='sigmoid')(conv_p)
+    # Dense Conv
+    last_conv = Conv2D(1, (1, 1), activation=last_activation)(conv_p)
     print(F"Final shape {last_conv.shape}")
 
     model = Model(inputs=inputs, outputs=[last_conv])
@@ -144,7 +147,7 @@ def make_multistream_2d_half_unet_for_classification(inputs, num_filters=8, filt
                                                      size_last_layer=10,
                                                      number_of_dense_layers=2,
                                                      batch_norm=True,
-                                                     dropout=True):
+                                                     dropout=True, activation='relu', last_node_activation='softmax'):
     """Makes a 3D-Unet with N number of inputs streams
     :param inputs: An array of tensorflow inputs for example inputs = [Input((10,10,10, 1)), Input((10,10,10,1)]
     :param num_filters: The number of filters to start with, it will double for every new level
@@ -201,10 +204,11 @@ def make_multistream_2d_half_unet_for_classification(inputs, num_filters=8, filt
     units = num_filters * (2 ** (num_levels))
     for cur_dense_layer in range(number_of_dense_layers-1):
         print(F"Neurons for dense layer {units} ")
-        dense_lay = Dense(filters, activation='relu')(dense_lay)
+        dense_lay = Dense(filters, activation=activation)(dense_lay)
 
-    final_lay = Dense(size_last_layer, activation='softmax')(dense_lay)
+    final_lay = Dense(size_last_layer, activation=last_node_activation)(dense_lay)
     print(F"Final number of units: {size_last_layer}")
 
     model = Model(inputs=inputs, outputs=[final_lay])
     return model
+

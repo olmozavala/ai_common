@@ -1,5 +1,4 @@
 import numpy as np
-from inout.readData import *
 from AI.DataAugmentation import *
 from inout.readDataPreproc import *
 from img_viz.medical import MedicalImageVisualizer

@@ -2,9 +2,9 @@ from __future__ import division, print_function
 import numpy as np
 import tensorflow as tf
 from scipy.spatial.distance import *
-from preproc.contour_smoothing import getContourFromMask
-from keras import backend as K
+from tensorflow.keras import backend as K
 K.set_image_data_format('channels_last')
+from scipy.ndimage.morphology import binary_erosion
 
 def real_dice_coef(y_true, y_pred):
     smooth = 0.01
@@ -104,3 +104,15 @@ def dice_coef_lesion(y_true, y_pred, smooth=1.0):
     y_true_c = tf.floor(temp + eps)
     intersection = K.sum(y_true_c * y_pred_c)
     return (2. * intersection + smooth) / ( K.sum(y_true_c) + K.sum(y_pred_c) + smooth)
+
+def getContourFromMask(mask):
+    '''
+    Obtains the contour of a binary mask
+    :param mask:
+    :return:
+    '''
+    s = makeSphere(4,2)
+    eroded_mask = binary_erosion(mask, structure=s)
+    ctr = mask - eroded_mask
+    ctr[ctr>0] = 1 #Binary
+    return ctr
